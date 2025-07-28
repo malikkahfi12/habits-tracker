@@ -1,29 +1,53 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { PaperProvider } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+function RouteGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const { user, isLoadingUser } = useAuth()
+  const segments = useSegments();
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === "auth";
+    
+
+
+    if (!user && !inAuthGroup && !isLoadingUser) {
+      const timeout = setTimeout(() => {
+        router.replace("/auth");
+        console.log("auth")
+      }, 0.1);
+      return () => clearTimeout(timeout);
+
+    } else if (user && inAuthGroup && !isLoadingUser) {
+      const timeout = setTimeout(() => {
+        router.replace("/");
+        console.log("login")
+      }, 0.1);
+      return () => clearTimeout(timeout);
+
+    }
+  }, [user, segments]);
+
+
+
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <PaperProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <RouteGuard>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </RouteGuard>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </PaperProvider>
   );
 }
